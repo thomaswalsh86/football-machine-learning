@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 #shots
 #goals
 
-#teams =[]
-fbref = sd.FBref(leagues=["ENG-Premier League"],seasons=["2023","2024","2025"])
+#teams = []
+fbref = sd.FBref(leagues=["ENG-Premier League"],seasons=["2024"])
 shooting = fbref.read_team_season_stats(stat_type="shooting")
 print(shooting.columns)
 print(shooting.head)
