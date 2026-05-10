@@ -24,12 +24,10 @@ base_url = "https://api.football-data.org/v4"
 # Premier League competition ID
 comp_id = 2021
 
-# Seasons: 2020/21, 2021/22, 2022/23, 2023/24
+# Seasons available on free tier: current + last completed
 seasons = [
-    ("2020-08-01", "2021-05-31"),  # 2020/21
-    ("2021-08-01", "2022-05-31"),  # 2021/22
-    ("2022-08-01", "2023-05-31"),  # 2022/23
     ("2023-08-01", "2024-05-31"),  # 2023/24
+    ("2024-08-01", "2025-05-31"),  # 2024/25
 ]
 
 # Function to save data
@@ -45,13 +43,14 @@ for start_date, end_date in seasons:
     url = f"{base_url}/competitions/{comp_id}/matches?dateFrom={start_date}&dateTo={end_date}"
     try:
         response = requests.get(url, headers=headers)
+        response.raise_for_status()
         data = response.json()
         matches = data['matches']
         df = pd.json_normalize(matches)
         df['season'] = f"{start_date[:4]}-{end_date[:4]}"
         all_matches.append(df)
         print(f"Fetched matches for {start_date[:4]}-{end_date[:4]}: {len(matches)}")
-        time.sleep(1)  # Rate limit
+        time.sleep(1)  # Respect rate limits
     except Exception as e:
         print(f"Error fetching matches for {start_date[:4]}-{end_date[:4]}: {e}")
 
@@ -59,23 +58,14 @@ if all_matches:
     match_results = pd.concat(all_matches, ignore_index=True)
     save_data(match_results, "match_results.pkl")
 
-# Fetch teams (current, but can be extended)
+# Fetch teams (optional, for reference)
 try:
     url = f"{base_url}/competitions/{comp_id}/teams"
     response = requests.get(url, headers=headers)
+    response.raise_for_status()
     data = response.json()
     teams = pd.json_normalize(data['teams'])
     save_data(teams, "teams.pkl")
     print(f"Fetched teams: {len(data['teams'])}")
 except Exception as e:
     print(f"Error fetching teams: {e}")
-
-# Fetch Elo ratings from ClubElo
-try:
-    elo_url = "https://clubelo.com/download/ENG.csv"
-    response = requests.get(elo_url)
-    with open(os.path.join(data_dir, "elo_ratings.csv"), 'wb') as f:
-        f.write(response.content)
-    print("Downloaded Elo ratings CSV")
-except Exception as e:
-    print(f"Error downloading Elo: {e}")
