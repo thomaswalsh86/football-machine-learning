@@ -5,12 +5,12 @@ import numpy as np
 
 data_dir = "data"
 
-# Load match results
+# Load match results (now includes xG, possession, season, etc.)
 with open(os.path.join(data_dir, "match_results.pkl"), 'rb') as f:
     matches = pickle.load(f)
 
-# Sort matches by date
-matches['utcDate'] = pd.to_datetime(matches['utcDate'])
+# Convert utcDate to naive datetime (strip timezone) and sort
+matches['utcDate'] = pd.to_datetime(matches['utcDate']).dt.tz_localize(None)
 matches = matches.sort_values('utcDate').reset_index(drop=True)
 
 # Initialize Elo ratings
@@ -32,7 +32,7 @@ def update_elo(winner_elo, loser_elo, draw=False):
         new_l = loser_elo + k_factor * (0 - exp_l)
     return new_w, new_l
 
-# Get unique teams
+# Get unique teams (using same column names as before)
 home_teams = matches['homeTeam.name'].unique()
 away_teams = matches['awayTeam.name'].unique()
 all_teams = set(home_teams) | set(away_teams)
@@ -49,12 +49,20 @@ for idx, match in matches.iterrows():
     home_score = match['score.fullTime.home']
     away_score = match['score.fullTime.away']
 
+    # Skip matches with missing scores (should not happen for completed matches)
+    if pd.isna(home_score) or pd.isna(away_score):
+        continue
+
     home_elo = elo_ratings[home]
     away_elo = elo_ratings[away]
 
-    # Record before update
+    # Create a unique match ID – FBref doesn’t supply one, so we use row number
+    # (You could also build one from date+teams if needed)
+    match_id = f"{idx}"
+
+    # Record Elo before the match (using naive date)
     elo_history.append({
-        'match_id': match['id'],
+        'match_id': match_id,
         'date': match['utcDate'],
         'home_team': home,
         'away_team': away,
@@ -62,14 +70,12 @@ for idx, match in matches.iterrows():
         'away_elo': away_elo
     })
 
+    # Update Elo based on result
     if home_score > away_score:
-        # Home win
         new_home, new_away = update_elo(home_elo, away_elo)
     elif away_score > home_score:
-        # Away win
         new_away, new_home = update_elo(away_elo, home_elo)
     else:
-        # Draw
         new_home, new_away = update_elo(home_elo, away_elo, draw=True)
 
     elo_ratings[home] = new_home

@@ -1,32 +1,45 @@
 import pandas as pd
-import pickle
 import os
 
 data_dir = "data"
 
-# Load match results
-with open(os.path.join(data_dir, "match_results.pkl"), 'rb') as f:
-    matches = pickle.load(f)
+def print_file_info(filename, description):
+    filepath = os.path.join(data_dir, filename)
+    if os.path.exists(filepath):
+        if filename.endswith('.csv'):
+            df = pd.read_csv(filepath)
+        elif filename.endswith('.pkl'):
+            df = pd.read_pickle(filepath)
+        else:
+            print(f"Unknown file format: {filename}")
+            return
+        print(f"\n{'='*60}")
+        print(f"{description} ({filename})")
+        print(f"Shape: {df.shape}")
+        print("Columns:", df.columns.tolist())
+        print("First 3 rows:")
+        print(df.head(3))
+    else:
+        print(f"\n{description} ({filename}) not found – run the corresponding script first.")
 
-print("Match Results Sample:")
-print(matches.head())
-print(f"Shape: {matches.shape}")
-print("Columns:", matches.columns.tolist())
+# 1. Raw match results (from FBref, many seasons)
+print_file_info("match_results.pkl", "Match Results (with xG, possession)")
 
-# Load teams
-with open(os.path.join(data_dir, "teams.pkl"), 'rb') as f:
-    teams = pickle.load(f)
+# 2. Custom Elo history (from calculate_elo.py)
+print_file_info("elo_history.csv", "Elo History (pre‑match Elo for each fixture)")
 
-print("\nTeams Sample:")
-print(teams.head())
-print(f"Shape: {teams.shape}")
+# 3. Current Elo ratings snapshot
+print_file_info("current_elo.csv", "Current Elo Ratings")
 
-# Check for Elo
-elo_path = os.path.join(data_dir, "elo_ratings.csv")
-if os.path.exists(elo_path):
-    elo = pd.read_csv(elo_path)
-    print("\nElo Ratings Sample:")
-    print(elo.head())
-    print(f"Shape: {elo.shape}")
-else:
-    print("\nElo ratings not found.")
+# 4. Final feature table (used by train_model.py)
+print_file_info("match_features.csv", "Engineered Match Features (for ML)")
+
+# 5. Teams list – only if it exists (optional)
+teams_path = os.path.join(data_dir, "teams.pkl")
+if os.path.exists(teams_path):
+    teams = pd.read_pickle(teams_path)
+    print(f"\n{'='*60}")
+    print("Teams (teams.pkl)")
+    print(f"Shape: {teams.shape}")
+    print("Columns:", teams.columns.tolist())
+    print(teams.head(3))
